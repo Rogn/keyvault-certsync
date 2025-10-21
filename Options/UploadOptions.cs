@@ -22,5 +22,8 @@ namespace keyvault_certsync.Options
 
         [Option('f', "force", HelpText = "Force upload even when identical kev vault certificate exists")]
         public bool Force { get; set; }
+
+        [Option("skip-validation", HelpText = "Skip certificate chain validation")]
+        public bool SkipValidation { get; set; }
     }
 }

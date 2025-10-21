@@ -49,6 +49,9 @@ namespace keyvault_certsync.Options
         [Option('a', "automate", HelpText = "Generate config to run during sync")]
         public bool Automate { get; set; }
 
+        [Option("skip-validation", HelpText = "Skip certificate chain validation")]
+        public bool SkipValidation { get; set; }
+
         public DownloadOptions ShallowCopy()
         {
             return (DownloadOptions)MemberwiseClone();

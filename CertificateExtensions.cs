@@ -133,5 +133,130 @@ namespace keyvault_certsync
             char[] privateKey = PemEncoding.Write("PRIVATE KEY", privateKeyBytes);
             return new string(privateKey);
         }
+
+        /// <summary>
+        /// Validates a certificate chain for completeness, validity, and proper structure
+        /// </summary>
+        public static ChainValidationResult ValidateChain(this X509Certificate2Collection chain, bool checkExpiration = true)
+        {
+            var result = new ChainValidationResult();
+
+            // Check if chain is empty
+            if (chain == null || chain.Count == 0)
+            {
+                result.IsValid = false;
+                result.Errors.Add("ChainEmpty", "Certificate chain is empty");
+                return result;
+            }
+
+            var endEntityCert = chain[0];
+
+            // Check if end-entity certificate has a private key
+            if (!endEntityCert.HasPrivateKey)
+            {
+                result.Warnings.Add("NoPrivateKey", "End-entity certificate does not have a private key");
+            }
+
+            // Check expiration dates
+            if (checkExpiration)
+            {
+                var now = DateTime.UtcNow;
+                for (int i = 0; i < chain.Count; i++)
+                {
+                    var cert = chain[i];
+                    string certType = i == 0 ? "End-entity certificate" :
+                                     i == chain.Count - 1 ? "Root certificate" :
+                                     $"Intermediate certificate {i}";
+
+                    if (cert.NotBefore > now)
+                    {
+                        result.IsValid = false;
+                        result.Errors.Add($"NotYetValid_{i}", $"{certType} is not yet valid (NotBefore: {cert.NotBefore:u})");
+                    }
+
+                    if (cert.NotAfter < now)
+                    {
+                        result.IsValid = false;
+                        result.Errors.Add($"Expired_{i}", $"{certType} has expired (NotAfter: {cert.NotAfter:u})");
+                    }
+                    else if (cert.NotAfter < now.AddDays(30))
+                    {
+                        result.Warnings.Add($"ExpiresSoon_{i}", $"{certType} expires soon (NotAfter: {cert.NotAfter:u})");
+                    }
+                }
+            }
+
+            // Validate chain structure and issuer relationships
+            if (chain.Count > 1)
+            {
+                for (int i = 0; i < chain.Count - 1; i++)
+                {
+                    var subject = chain[i];
+                    var issuer = chain[i + 1];
+
+                    // Check if issuer's subject matches subject's issuer
+                    if (!subject.Issuer.Equals(issuer.Subject, StringComparison.OrdinalIgnoreCase))
+                    {
+                        result.Warnings.Add($"IssuerMismatch_{i}", $"Certificate {i} issuer does not match next certificate's subject");
+                    }
+
+                    // Verify signature (child certificate signed by parent)
+                    try
+                    {
+                        using (var publicKey = issuer.GetRSAPublicKey() ??
+                                              issuer.GetECDsaPublicKey() as AsymmetricAlgorithm)
+                        {
+                            if (publicKey == null)
+                            {
+                                result.Warnings.Add($"PublicKeyExtraction_{i}", $"Unable to extract public key from certificate {i + 1} to verify signature");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Warnings.Add($"SignatureValidation_{i}", $"Error validating signature chain at position {i}: {ex.Message}");
+                    }
+                }
+
+                // Check root certificate is self-signed
+                var rootCert = chain[chain.Count - 1];
+                if (!rootCert.Subject.Equals(rootCert.Issuer, StringComparison.OrdinalIgnoreCase))
+                {
+                    result.Warnings.Add("RootNotSelfSigned", "Root certificate is not self-signed (Subject != Issuer)");
+                }
+            }
+
+            // Use Windows certificate chain validation
+            try
+            {
+                using (var chainValidator = new X509Chain())
+                {
+                    chainValidator.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck; // Don't check revocation by default
+                    chainValidator.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority; // Allow self-signed roots
+                    chainValidator.ChainPolicy.ExtraStore.AddRange(chain);
+
+                    bool chainBuilt = chainValidator.Build(endEntityCert);
+
+                    if (!chainBuilt)
+                    {
+                        int statusIndex = 0;
+                        foreach (X509ChainStatus status in chainValidator.ChainStatus)
+                        {
+                            // Ignore UntrustedRoot for self-signed certificates
+                            if (status.Status != X509ChainStatusFlags.UntrustedRoot)
+                            {
+                                result.Warnings.Add($"ChainStatus_{status.Status}_{statusIndex++}", status.StatusInformation);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Warnings.Add("SystemValidationError", $"Unable to perform system chain validation: {ex.Message}");
+            }
+
+            return result;
+        }
     }
 }

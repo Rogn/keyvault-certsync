@@ -151,18 +151,45 @@ namespace keyvault_certsync.Flows
                     machineKey: opts.Store.HasValue && opts.Store.Value == StoreLocation.LocalMachine,
                     version: opts.Version);
 
-                Log.Information("Downloaded certificate {Name} from key {Key} thumbprint {Thumbprint}", 
+                Log.Information("Downloaded certificate {Name} from key {Key} thumbprint {Thumbprint}",
                     cert.CertificateName, cert.SecretName, cert.Thumbprint);
+
+                // Validate certificate chain
+                if (!opts.SkipValidation)
+                {
+                    var validationResult = chain.ValidateChain();
+                    if (validationResult.HasErrors)
+                    {
+                        foreach (var error in validationResult.Errors)
+                        {
+                            Log.Error("Validation error for {Name}: {ErrorType} - {ErrorMessage}",
+                                cert.CertificateName, error.Key, error.Value);
+                        }
+                        return new DownloadResult(DownloadStatus.Error);
+                    }
+                    if (validationResult.HasWarnings)
+                    {
+                        foreach (var warning in validationResult.Warnings)
+                        {
+                            Log.Warning("Validation warning for {Name}: {WarningType} - {WarningMessage}",
+                                cert.CertificateName, warning.Key, warning.Value);
+                        }
+                    }
+                }
+                else
+                {
+                    Log.Information("Skipping certificate chain validation for {Name}", cert.CertificateName);
+                }
             }
             catch (Azure.RequestFailedException ex)
             {
-                Log.Error(ex, "Error downloading certificate {Name} from key {Key} thumbprint {Thumbprint}", 
+                Log.Error(ex, "Error downloading certificate {Name} from key {Key} thumbprint {Thumbprint}",
                     cert.CertificateName, cert.SecretName, cert.Thumbprint);
                 return new DownloadResult(DownloadStatus.Error);
             }
             catch (NotSupportedException ex)
             {
-                Log.Error(ex, "Key vault certificate {Name} from key {Key} thumbprint {Thumbprint} is invalid", 
+                Log.Error(ex, "Key vault certificate {Name} from key {Key} thumbprint {Thumbprint} is invalid",
                     cert.CertificateName, cert.SecretName, cert.Thumbprint);
                 return new DownloadResult(DownloadStatus.Error);
             }

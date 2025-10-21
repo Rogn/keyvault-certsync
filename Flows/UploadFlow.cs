@@ -48,6 +48,33 @@ namespace keyvault_certsync.Flows
                 return -1;
             }
 
+            // Validate certificate chain before upload
+            if (!opts.SkipValidation)
+            {
+                var validationResult = chain.ValidateChain();
+                if (validationResult.HasErrors)
+                {
+                    foreach (var error in validationResult.Errors)
+                    {
+                        Log.Error("Validation error for {Name}: {ErrorType} - {ErrorMessage}",
+                            opts.Name, error.Key, error.Value);
+                    }
+                    return -1;
+                }
+                if (validationResult.HasWarnings)
+                {
+                    foreach (var warning in validationResult.Warnings)
+                    {
+                        Log.Warning("Validation warning for {Name}: {WarningType} - {WarningMessage}",
+                            opts.Name, warning.Key, warning.Value);
+                    }
+                }
+            }
+            else
+            {
+                Log.Information("Skipping certificate chain validation for {Name}", opts.Name);
+            }
+
             var cert = client.GetCertificateDetails(opts.Name);
 
             string key = $"{opts.Name}{Guid.NewGuid()}";
