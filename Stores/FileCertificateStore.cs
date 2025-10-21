@@ -45,7 +45,7 @@ namespace keyvault_certsync.Stores
                 return false;
             }
 
-            if (string.Equals(cert.Thumbprint, x509.Thumbprint, StringComparison.CurrentCultureIgnoreCase))
+            if (string.Equals(cert.Thumbprint, x509.Thumbprint, StringComparison.OrdinalIgnoreCase))
                 return true;
 
             return false;

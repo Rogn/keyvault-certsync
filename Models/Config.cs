@@ -21,7 +21,7 @@ namespace keyvault_certsync.Models
         {
             bool changed = false;
             foreach (DictionaryEntry env in System.Environment.GetEnvironmentVariables())
-                if (env.Key.ToString().StartsWith("AZURE_", StringComparison.CurrentCultureIgnoreCase))
+                if (env.Key.ToString().StartsWith("AZURE_", StringComparison.OrdinalIgnoreCase))
                 {
                     if (!Environment.ContainsKey(env.Key.ToString()) || Environment[env.Key.ToString()] != env.Value.ToString())
                     {

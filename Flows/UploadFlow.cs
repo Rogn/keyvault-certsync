@@ -54,7 +54,7 @@ namespace keyvault_certsync.Flows
 
             if (cert != null)
             {
-                if (string.Equals(cert.Thumbprint, chain[0].Thumbprint, StringComparison.CurrentCultureIgnoreCase))
+                if (string.Equals(cert.Thumbprint, chain[0].Thumbprint, StringComparison.OrdinalIgnoreCase))
                 {
                     if (!opts.Force)
                     {

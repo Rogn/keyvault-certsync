@@ -25,7 +25,7 @@ namespace keyvault_certsync.Flows
                 var names = opts.Name.Split(',').ToList();
                 certs = client.GetCertificateDetails(names);
 
-                var missing = names.Except(certs.Select(s => s.CertificateName), StringComparer.CurrentCultureIgnoreCase);
+                var missing = names.Except(certs.Select(s => s.CertificateName), StringComparer.OrdinalIgnoreCase);
 
                 if (missing.Any())
                 {

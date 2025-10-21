@@ -58,7 +58,7 @@ namespace keyvault_certsync.Flows
                 var names = opts.Name.Split(',').ToList();
                 certs = client.GetCertificateDetails(names);
 
-                var missing = names.Except(certs.Select(s => s.CertificateName), StringComparer.CurrentCultureIgnoreCase);
+                var missing = names.Except(certs.Select(s => s.CertificateName), StringComparer.OrdinalIgnoreCase);
 
                 if (missing.Any())
                 {
@@ -183,7 +183,9 @@ namespace keyvault_certsync.Flows
             var config = opts.ShallowCopy();
             config.Name = name;
 
-            string file = Path.Combine(opts.ConfigDirectory, $"download_{name}.json");
+            // Security: Sanitize certificate name to prevent path traversal
+            string safeName = name.SanitizeFileName();
+            string file = Path.Combine(opts.ConfigDirectory, $"download_{safeName}.json");
 
             try
             {

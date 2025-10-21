@@ -21,13 +21,13 @@ namespace keyvault_certsync
         public static IEnumerable<CertificateDetails> GetCertificateDetails(this SecretClient secretClient, IEnumerable<string> names)
         {
             return secretClient.GetCertificateDetails()
-                .Where(w => names.Contains(w.CertificateName, StringComparer.CurrentCultureIgnoreCase));
+                .Where(w => names.Contains(w.CertificateName, StringComparer.OrdinalIgnoreCase));
         }
 
         public static CertificateDetails GetCertificateDetails(this SecretClient secretClient, string name)
         {
             return secretClient.GetCertificateDetails()
-                .SingleOrDefault(s => s.CertificateName.Equals(name, StringComparison.CurrentCultureIgnoreCase));
+                .SingleOrDefault(s => s.CertificateName.Equals(name, StringComparison.OrdinalIgnoreCase));
         }
 
         public static IEnumerable<CertificateDetails> GetCertificateVersions(this SecretClient secretClient, string secretName)
@@ -38,12 +38,34 @@ namespace keyvault_certsync
 
         public static string GetPath(this CertificateDetails cert, string basePath)
         {
-            return Path.Combine(basePath, cert.CertificateName);
+            // Security: Sanitize certificate name to prevent path traversal attacks
+            string safeName = cert.CertificateName.SanitizeFileName();
+            return Path.Combine(basePath, safeName);
         }
 
         public static string GetPath(this CertificateDetails cert, string basePath, string fileName)
         {
-            return Path.Combine(basePath, cert.CertificateName, fileName);
+            // Security: Sanitize certificate name to prevent path traversal attacks
+            string safeName = cert.CertificateName.SanitizeFileName();
+            return Path.Combine(basePath, safeName, fileName);
+        }
+
+        public static string SanitizeFileName(this string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentException("File name cannot be null or empty", nameof(name));
+
+            // Remove any path traversal characters and invalid filename characters
+            char[] invalidChars = Path.GetInvalidFileNameChars();
+            string sanitized = string.Concat(name.Where(c => !invalidChars.Contains(c) && c != '.' && c != '/'));
+
+            // Prevent relative path components
+            sanitized = sanitized.Replace("..", "").Replace("./", "").Replace(".\\", "");
+
+            if (string.IsNullOrEmpty(sanitized))
+                throw new ArgumentException($"File name '{name}' contains only invalid characters", nameof(name));
+
+            return sanitized;
         }
 
         public static X509Certificate2Collection GetCertificate(this SecretClient secretClient, string secretName,

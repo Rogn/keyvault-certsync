@@ -3,6 +3,7 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 
 namespace keyvault_certsync
@@ -34,8 +35,26 @@ namespace keyvault_certsync
         public static int RunDeployHook(string command, DownloadResult result)
         {
             string[] parts = command.Split(new[] { ' ' }, 2);
+            string executablePath = parts[0];
 
-            var startInfo = new ProcessStartInfo(parts[0]);
+            // Security: Require absolute paths for hook executables to prevent PATH injection
+            if (!Path.IsPathRooted(executablePath))
+            {
+                Log.Error("Hook executable must be an absolute path: {Path}", executablePath);
+                return -1;
+            }
+
+            // Security: Validate that the executable exists
+            if (!File.Exists(executablePath))
+            {
+                Log.Error("Hook executable not found: {Path}", executablePath);
+                return -1;
+            }
+
+            var startInfo = new ProcessStartInfo(executablePath)
+            {
+                UseShellExecute = false // Security: Prevent shell interpretation of arguments
+            };
 
             startInfo.EnvironmentVariables.Add("CERTIFICATE_NAME", result.CertificateName);
             startInfo.EnvironmentVariables.Add("CERTIFICATE_THUMBPRINT", result.Thumbprint);
@@ -46,20 +65,47 @@ namespace keyvault_certsync
             if (parts.Length > 1)
                 startInfo.Arguments = parts[1];
 
+            Log.Debug("Running deploy hook with environment variables: CERTIFICATE_NAME={CertificateName}, CERTIFICATE_THUMBPRINT={Thumbprint}, CERTIFICATE_PATH={Path}",
+                result.CertificateName, result.Thumbprint, result.Path ?? "(not set)");
+
             return RunHook(startInfo, "Deploy");
         }
 
         private static int RunPostHook(string command, IEnumerable<DownloadResult> results)
         {
             string[] parts = command.Split(new[] { ' ' }, 2);
+            string executablePath = parts[0];
 
-            var startInfo = new ProcessStartInfo(parts[0]);
+            // Security: Require absolute paths for hook executables to prevent PATH injection
+            if (!Path.IsPathRooted(executablePath))
+            {
+                Log.Error("Hook executable must be an absolute path: {Path}", executablePath);
+                return -1;
+            }
 
-            startInfo.EnvironmentVariables.Add("CERTIFICATE_NAMES", string.Join(",", results.Select(s => s.CertificateName)));
-            startInfo.EnvironmentVariables.Add("CERTIFICATE_THUMBPRINTS", string.Join(",", results.Select(s => s.Thumbprint)));
+            // Security: Validate that the executable exists
+            if (!File.Exists(executablePath))
+            {
+                Log.Error("Hook executable not found: {Path}", executablePath);
+                return -1;
+            }
+
+            var startInfo = new ProcessStartInfo(executablePath)
+            {
+                UseShellExecute = false // Security: Prevent shell interpretation of arguments
+            };
+
+            var certificateNames = string.Join(",", results.Select(s => s.CertificateName));
+            var certificateThumbprints = string.Join(",", results.Select(s => s.Thumbprint));
+
+            startInfo.EnvironmentVariables.Add("CERTIFICATE_NAMES", certificateNames);
+            startInfo.EnvironmentVariables.Add("CERTIFICATE_THUMBPRINTS", certificateThumbprints);
 
             if (parts.Length > 1)
                 startInfo.Arguments = parts[1];
+
+            Log.Debug("Running post hook with environment variables: CERTIFICATE_NAMES={CertificateNames}, CERTIFICATE_THUMBPRINTS={Thumbprints}",
+                certificateNames, certificateThumbprints);
 
             return RunHook(startInfo, "Post");
         }
