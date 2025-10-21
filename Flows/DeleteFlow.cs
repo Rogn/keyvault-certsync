@@ -31,7 +31,7 @@ namespace keyvault_certsync.Flows
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error uploading certificate {Name} with key {Key}", opts.Name, cert.SecretName);
+                Log.Error(ex, "Error deleting certificate {Name} with key {Key}", opts.Name, cert.SecretName);
                 return -1;
             }
 

@@ -25,9 +25,9 @@ namespace keyvault_certsync.Models
                 {
                     if (!Environment.ContainsKey(env.Key.ToString()) || Environment[env.Key.ToString()] != env.Value.ToString())
                     {
-                        Environment.Add(env.Key.ToString(), env.Value.ToString());
+                        Environment[env.Key.ToString()] = env.Value.ToString();
                         changed = true;
-                    }    
+                    }
                 }
 
             return changed;

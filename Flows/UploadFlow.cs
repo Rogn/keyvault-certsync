@@ -32,7 +32,7 @@ namespace keyvault_certsync.Flows
 
             if (!string.IsNullOrEmpty(opts.Chain) && !File.Exists(opts.Chain))
             {
-                Log.Error("Certificate chain {File} not found", opts.PrivateKey);
+                Log.Error("Certificate chain {File} not found", opts.Chain);
                 return -1;
             }
 

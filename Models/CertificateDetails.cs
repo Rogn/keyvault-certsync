@@ -22,19 +22,19 @@ namespace keyvault_certsync.Models
         {
             Id = secret.Id;
             Version = Id.ToString().Split('/').Last();
-            
+
             SecretName = secret.Name;
             NotBefore = secret.NotBefore;
             ExpiresOn = secret.ExpiresOn;
 
-            CertificateId = secret.Tags.SingleOrDefault(s => s.Key == "CertificateId").Value;
+            CertificateId = secret.Tags?.FirstOrDefault(s => s.Key == "CertificateId").Value;
 
             if(!string.IsNullOrEmpty(CertificateId) && CertificateId.Contains('/'))
                 CertificateName = CertificateId.Split('/').Last();
 
-            CertificateState = secret.Tags.SingleOrDefault(s => s.Key == "CertificateState").Value;
-            SerialNumber = secret.Tags.SingleOrDefault(s => s.Key == "SerialNumber").Value;
-            Thumbprint = secret.Tags.SingleOrDefault(s => s.Key == "Thumbprint").Value;
+            CertificateState = secret.Tags?.FirstOrDefault(s => s.Key == "CertificateState").Value;
+            SerialNumber = secret.Tags?.FirstOrDefault(s => s.Key == "SerialNumber").Value;
+            Thumbprint = secret.Tags?.FirstOrDefault(s => s.Key == "Thumbprint").Value;
         }
 
         public override string ToString()
