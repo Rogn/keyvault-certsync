@@ -33,9 +33,9 @@ namespace keyvault_certsync.Flows
                 return -1;
             }
 
-            if (opts.FileTypes.HasValue && !opts.FileTypes.Value.HasFlag(FileType.Cert))
+            if (opts.FileTypes.HasValue && !opts.FileTypes.Value.HasFlag(FileType.Cert) && !opts.FileTypes.Value.HasFlag(FileType.Pkcs12))
             {
-                Log.Error("Cert must be specified as a file type");
+                Log.Error("Cert or Pkcs12 must be specified as a file type");
                 return -1;
             }
 

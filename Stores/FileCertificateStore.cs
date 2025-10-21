@@ -31,13 +31,27 @@ namespace keyvault_certsync.Stores
 
         public bool Exists(CertificateDetails cert)
         {
-            if (!File.Exists(cert.GetPath(path, CERT_PEM)))
-                return false;
+            string certPath = null;
+            X509Certificate2 x509 = null;
 
-            X509Certificate2 x509;
+            // Check for cert.pem first
+            if (fileTypes.HasFlag(FileType.Cert) && File.Exists(cert.GetPath(path, CERT_PEM)))
+            {
+                certPath = cert.GetPath(path, CERT_PEM);
+            }
+            // Fall back to keystore.pfx if Pkcs12 is specified
+            else if (fileTypes.HasFlag(FileType.Pkcs12) && File.Exists(cert.GetPath(path, KEYSTORE_PFX)))
+            {
+                certPath = cert.GetPath(path, KEYSTORE_PFX);
+            }
+            else
+            {
+                return false;
+            }
+
             try
             {
-                x509 = new X509Certificate2(cert.GetPath(path, CERT_PEM));
+                x509 = new X509Certificate2(certPath, password);
             }
             catch (Exception ex)
             {
