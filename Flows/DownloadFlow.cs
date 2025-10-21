@@ -210,6 +210,13 @@ namespace keyvault_certsync.Flows
             var config = opts.ShallowCopy();
             config.Name = name;
 
+            // Convert relative path to absolute path for consistency
+            if (!string.IsNullOrEmpty(config.Path) && !Path.IsPathRooted(config.Path))
+            {
+                config.Path = Path.GetFullPath(config.Path);
+                Log.Debug("Converted relative path to absolute: {Path}", config.Path);
+            }
+
             // Security: Sanitize certificate name to prevent path traversal
             string safeName = name.SanitizeFileName();
             string file = Path.Combine(opts.ConfigDirectory, $"download_{safeName}.json");
