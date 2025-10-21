@@ -114,10 +114,20 @@ namespace keyvault_certsync
                 Directory.CreateDirectory(dir);
                 return dir;
             }
-            catch (Exception ex)
+            catch
             {
-                Console.Error.WriteLine($"Error creating log directory. Defaulting to working directory. {ex.Message}");
-                return string.Empty;
+                // Fallback to user profile directory
+                try
+                {
+                    string userDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".keyvault-certsync", "logs");
+                    Directory.CreateDirectory(userDir);
+                    return userDir;
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"Error creating log directory. Defaulting to working directory. {ex.Message}");
+                    return string.Empty;
+                }
             }
         }
 
@@ -132,10 +142,20 @@ namespace keyvault_certsync
                 Directory.CreateDirectory(dir);
                 return dir;
             }
-            catch (Exception ex)
+            catch
             {
-                Log.Error(ex, "Error creating config directory. Defaulting to working directory.");
-                return string.Empty;
+                // Fallback to user profile directory
+                try
+                {
+                    string userDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".keyvault-certsync", "config");
+                    Directory.CreateDirectory(userDir);
+                    return userDir;
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error creating config directory. Defaulting to working directory.");
+                    return string.Empty;
+                }
             }
         }
 
