@@ -31,6 +31,14 @@ namespace keyvault_certsync.Flows
                 Log.Error(ex, "Error enumerating config files in directory {Path}", opts.ConfigDirectory);
                 return -1;
             }
+            
+            if (files.Length == 0)
+            {
+                Log.Information("No automation configs found in {Path}", opts.ConfigDirectory);
+                return 0;
+            }
+
+            Log.Information("Found {Count} automation config(s) in {Path}", files.Length, opts.ConfigDirectory);
 
             int ret = 0;
             foreach(var file in files)
@@ -55,17 +63,111 @@ namespace keyvault_certsync.Flows
                 // Ensure backwards compatibility before --all
                 if (string.IsNullOrEmpty(config.Name))
                     config.All = true;
+                
+                DisplayAutomation(file, config);
 
                 if (opts.Force)
                     config.Force = true;
 
-                var flow = new DownloadFlow(config, credential);
+                if (!opts.DryRun)
+                {
+                    var flow = new DownloadFlow(config, credential);
 
-                if (flow.Run() != 0)
-                    ret = -1;
+                    if (flow.Run() != 0)
+                        ret = -1;
+                }
             }
 
             return ret;
+        }
+
+        private void DisplayAutomation(string fileName, DownloadOptions config)
+        {
+            Log.Information("Automation {FileName}", fileName);
+            Log.Debug("  Key Vault: {KeyVault}", config.KeyVault);
+
+            // Display certificate selection
+            if (config.All)
+            {
+                Log.Debug("  Certificates: All");
+            }
+            else if (!string.IsNullOrEmpty(config.Name))
+            {
+                var names = config.Name.Split(',');
+                if (names.Length == 1)
+                {
+                    Log.Debug("  Certificate: {Name}", config.Name);
+                }
+                else
+                {
+                    Log.Debug("  Certificates: {Count} certificate(s)", names.Length);
+                    foreach (var name in names)
+                    {
+                        Log.Debug("    - {Name}", name.Trim());
+                    }
+                }
+            }
+
+            // Display version if specified
+            if (!string.IsNullOrEmpty(config.Version))
+            {
+                Log.Debug("  Version: {Version}", config.Version);
+            }
+
+            // Display download location
+            if (!string.IsNullOrEmpty(config.Path))
+            {
+                Log.Debug("  Path: {Path}", config.Path);
+            }
+
+            if (config.Store.HasValue)
+            {
+                Log.Debug("  Store: {Store}", config.Store.Value);
+                if (config.MarkExportable)
+                {
+                    Log.Debug("  Mark Exportable: Yes");
+                }
+            }
+
+            // Display file types if specified
+            if (config.FileTypes.HasValue && !string.IsNullOrEmpty(config.Path))
+            {
+                Log.Debug("  File Types: {FileTypes}", config.FileTypes.Value);
+            }
+
+            // Display PKCS12 password protection
+            if (!string.IsNullOrEmpty(config.Password))
+            {
+                Log.Debug("  PKCS12 Password: (protected)");
+            }
+
+            // Display validation setting
+            if (config.SkipValidation)
+            {
+                Log.Debug("  Skip Validation: Yes");
+            }
+
+            // Display force flag
+            if (config.Force)
+            {
+                Log.Debug("  Force: Yes");
+            }
+
+            // Display hooks
+            if (!string.IsNullOrEmpty(config.DeployHook))
+            {
+                Log.Debug("  Deploy Hook: {Hook}", config.DeployHook);
+            }
+
+            if (!string.IsNullOrEmpty(config.PostHook))
+            {
+                Log.Debug("  Post Hook: {Hook}", config.PostHook);
+            }
+
+            if (string.IsNullOrEmpty(config.DeployHook) && string.IsNullOrEmpty(config.PostHook))
+            {
+                Log.Debug("  Hooks: None");
+            }
         }
     }
 }

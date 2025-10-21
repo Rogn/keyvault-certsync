@@ -7,5 +7,8 @@ namespace keyvault_certsync.Options
     {
         [Option('f', "force", HelpText = "Force even when identical certificate exists")]
         public bool Force { get; set; }
+
+        [Option("dry-run", HelpText = "Show the automations that would run")]
+        public bool DryRun { get; set; }
     }
 }
